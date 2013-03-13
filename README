@@ -1,0 +1,8 @@
+This is a mirror of http://www.vim.org/scripts/script.php?script_id=4473
+
+https://github.com/eagletmt/ghcmod-vim
+
+* Displaying the type of sub-expressions (ghc-mod type)
+* Displaying error/warning messages and their locations (ghc-mod check and ghc-mod lint)
+* Displaying the expansion of splices (ghc-mod expand)
+
