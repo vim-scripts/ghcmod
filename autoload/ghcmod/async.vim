@@ -30,7 +30,7 @@ function! s:receive(key)
     return
   endif
   let l:session = s:sessions[a:key]
-  let [l:cond, l:status] = ghcmod#wait(l:session.proc)
+  let [l:cond, l:status] = ghcmod#util#wait(l:session.proc)
   if l:cond ==# 'run'
     call feedkeys(mode() ==# 'i' ? "\<C-g>\<Esc>" : "\<Esc>", 'n')
     return
@@ -50,3 +50,5 @@ function! s:finalize(key)
     unlet s:updatetime
   endif
 endfunction
+
+" vim: set ts=2 sw=2 et fdm=marker:
