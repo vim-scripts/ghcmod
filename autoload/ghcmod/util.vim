@@ -46,6 +46,26 @@ function! ghcmod#util#join_path(dir, path) "{{{
   endif
 endfunction "}}}
 
+function! ghcmod#util#getcol() "{{{
+  let l:line = line('.')
+  let l:col = col('.')
+  let l:str = getline(l:line)[:(l:col - 1)]
+  let l:tabcnt = len(substitute(l:str, '[^\t]', '', 'g'))
+  return l:col + 7 * l:tabcnt
+endfunction "}}}
+
+function! ghcmod#util#tocol(line, col) "{{{
+  let l:str = getline(a:line)
+  let l:col = 0
+  for l:i in range(1, len(l:str))
+    let l:col += (l:str[l:i - 1] ==# "\t" ? 8 : 1)
+    if l:col >= a:col
+      return l:i
+    endif
+  endfor
+  return l:i + 1
+endfunction "}}}
+
 function! ghcmod#util#wait(proc) "{{{
   if has_key(a:proc, 'checkpid')
     return a:proc.checkpid()
@@ -67,21 +87,25 @@ function! ghcmod#util#wait(proc) "{{{
 endfunction "}}}
 
 function! ghcmod#util#check_version(version) "{{{
-  if !exists('s:ghc_mod_version')
-    call vimproc#system(['ghc-mod'])
-    let l:m = matchlist(vimproc#get_last_errmsg(), 'version \(\d\+\)\.\(\d\+\)\.\(\d\+\)')
-    let s:ghc_mod_version = l:m[1 : 3]
-    call map(s:ghc_mod_version, 'str2nr(v:val)')
-  endif
-
+  let l:ghc_mod_version = ghcmod#util#ghc_mod_version()
   for l:i in range(0, 2)
-    if a:version[l:i] > s:ghc_mod_version[l:i]
+    if a:version[l:i] > l:ghc_mod_version[l:i]
       return 0
-    elseif a:version[l:i] < s:ghc_mod_version[l:i]
+    elseif a:version[l:i] < l:ghc_mod_version[l:i]
       return 1
     endif
   endfor
   return 1
+endfunction "}}}
+
+function! ghcmod#util#ghc_mod_version() "{{{
+  if !exists('s:ghc_mod_version')
+    let l:ghcmod = vimproc#system(['ghc-mod','version'])
+    let l:m = matchlist(l:ghcmod, 'version \(\d\+\)\.\(\d\+\)\.\(\d\+\)')
+    let s:ghc_mod_version = l:m[1 : 3]
+    call map(s:ghc_mod_version, 'str2nr(v:val)')
+  endif
+  return s:ghc_mod_version
 endfunction "}}}
 
 " vim: set ts=2 sw=2 et fdm=marker:

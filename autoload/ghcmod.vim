@@ -15,17 +15,17 @@ function! ghcmod#getHaskellIdentifier() "{{{
 endfunction "}}}
 
 function! ghcmod#info(fexp, path, module) "{{{
-  let l:cmd = ghcmod#build_command(['info', a:path, a:module, a:fexp])
-  let l:output = s:system(l:cmd)
+  let l:cmd = ghcmod#build_command(['info', "-b \n", a:path, a:module, a:fexp])
+  let l:output = ghcmod#system(l:cmd)
   " Remove trailing newlines to prevent empty lines
   let l:output = substitute(l:output, '\n*$', '', '')
-  " Remove 'Dummy:0:0:' prefix.
-  return substitute(l:output, '^Dummy:0:0:', '', '')
+  " Remove 'Dummy:0:0:Error:' prefix.
+  return substitute(l:output, '^Dummy:0:0:Error:', '', '')
 endfunction "}}}
 
 function! ghcmod#type(line, col, path, module) "{{{
   let l:cmd = ghcmod#build_command(['type', a:path, a:module, a:line, a:col])
-  let l:output = s:system(l:cmd)
+  let l:output = ghcmod#system(l:cmd)
   let l:types = []
   for l:line in split(l:output, '\n')
     let l:m = matchlist(l:line, '\(\d\+\) \(\d\+\) \(\d\+\) \(\d\+\) "\([^"]\+\)"')
@@ -68,16 +68,19 @@ function! ghcmod#parse_make(lines, basedir) "{{{
   " See also :help readfile() and :help NL-used-for-Nul.
   let l:qflist = []
   for l:output in a:lines
+    if empty(l:output)
+      continue
+    endif
     let l:qf = {}
-    let l:m = matchlist(l:output, '^\(\f\+\):\(\d\+\):\(\d\+\):\s*\(.*\)$')
-    if len(l:m) < 4
+    let l:m = matchlist(l:output, '^\(\(\f\| \)\+\):\(\d\+\):\(\d\+\):\s*\(.*\)$')
+    if len(l:m) < 5
       let l:qf.bufnr = 0
       let l:qf.type = 'E'
       let l:qf.text = 'parse error in ghcmod! Could not parse the following ghc-mod output:' .  l:output
       call add(l:qflist, l:qf)
       break
     end
-    let [l:qf.filename, l:qf.lnum, l:qf.col, l:rest] = l:m[1 : 4]
+    let [l:qf.filename, _, l:qf.lnum, l:qf.col, l:rest] = l:m[1 : 5]
     let l:qf.filename = ghcmod#util#join_path(a:basedir, l:qf.filename)
     if l:rest =~# '^Warning:'
       let l:qf.type = 'W'
@@ -174,13 +177,13 @@ function! ghcmod#expand(path) "{{{
 
   let l:qflist = []
   let l:cmd = ghcmod#build_command(['expand', "-b '\n'", a:path])
-  for l:line in split(s:system(l:cmd), '\n')
+  for l:line in split(ghcmod#system(l:cmd), '\n')
     " path:line:col1-col2: message
     " or path:line:col: message
-    let l:m = matchlist(l:line, '^\s*\(\f\+\):\(\d\+\):\(\d\+\)\%(-\(\d\+\)\)\?\%(:\s*\(.*\)\)\?$')
+    let l:m = matchlist(l:line, '^\s*\(\(\f\| \)\+\):\(\d\+\):\(\d\+\)\%(-\(\d\+\)\)\?\%(:\s*\(.*\)\)\?$')
     if !empty(l:m)
       let l:qf = {}
-      let [l:qf.filename, l:qf.lnum, l:qf.col, l:col2, l:qf.text] = l:m[1 : 5]
+      let [l:qf.filename, _, l:qf.lnum, l:qf.col, l:col2, l:qf.text] = l:m[1 : 6]
       call add(l:qflist, l:qf)
       if !empty(l:col2)
         let l:qf2 = deepcopy(l:qf)
@@ -190,9 +193,9 @@ function! ghcmod#expand(path) "{{{
       endif
     else
       " path:(line1,col1)-(line2,col2): message
-      let l:m = matchlist(l:line, '^\s*\(\f\+\):(\(\d\+\),\(\d\+\))-(\(\d\+\),\(\d\+\))\%(:\s*\(.*\)\)\?$')
+      let l:m = matchlist(l:line, '^\s*\(\(\f\| \)\+\):(\(\d\+\),\(\d\+\))-(\(\d\+\),\(\d\+\))\%(:\s*\(.*\)\)\?$')
       if !empty(l:m)
-        let [l:filename, l:lnum1, l:col1, l:lnum2, l:col2, l:text] = l:m[1 : 6]
+        let [l:filename, _, l:lnum1, l:col1, l:lnum2, l:col2, l:text] = l:m[1 : 7]
         call add(l:qflist, { 'filename': l:filename, 'lnum': l:lnum1, 'col': l:col1, 'text': l:text })
         call add(l:qflist, { 'filename': l:filename, 'lnum': l:lnum2, 'col': l:col2, 'text': 'Splicing end here' })
       else
@@ -263,7 +266,7 @@ function! ghcmod#build_command(args) "{{{
   return l:cmd
 endfunction "}}}
 
-function! s:system(...) "{{{
+function! ghcmod#system(...) "{{{
   lcd `=ghcmod#basedir()`
   let l:ret = call('vimproc#system', a:000)
   lcd -
@@ -304,7 +307,7 @@ function! s:find_basedir() "{{{
 endfunction "}}}
 
 function! ghcmod#version() "{{{
-  return [1, 2, 0]
+  return [1, 3, 0]
 endfunction "}}}
 
 " vim: set ts=2 sw=2 et fdm=marker:

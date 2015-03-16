@@ -3,6 +3,22 @@ if exists('b:did_ftplugin_ghcmod') && b:did_ftplugin_ghcmod
 endif
 let b:did_ftplugin_ghcmod = 1
 
+if !exists('s:has_vimproc')
+  try
+    call vimproc#version()
+    let s:has_vimproc = 1
+  catch /^Vim\%((\a\+)\)\=:E117/
+    let s:has_vimproc = 0
+  endtry
+endif
+
+if !s:has_vimproc
+  echohl ErrorMsg
+  echomsg 'ghcmod: vimproc.vim is not installed!'
+  echohl None
+  finish
+endif
+
 if !exists('s:has_ghc_mod')
   let s:has_ghc_mod = 0
 
@@ -11,7 +27,7 @@ if !exists('s:has_ghc_mod')
     finish
   endif
 
-  let s:required_version = [2, 1, 2]
+  let s:required_version = [4, 1, 0]
   if !ghcmod#util#check_version(s:required_version)
     call ghcmod#util#print_error(printf('ghcmod: requires ghc-mod %s or higher', join(s:required_version, '.')))
     finish
