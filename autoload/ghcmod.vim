@@ -19,8 +19,7 @@ function! ghcmod#info(fexp, path, module) "{{{
   let l:output = ghcmod#system(l:cmd)
   " Remove trailing newlines to prevent empty lines
   let l:output = substitute(l:output, '\n*$', '', '')
-  " Remove 'Dummy:0:0:Error:' prefix.
-  return substitute(l:output, '^Dummy:0:0:Error:', '', '')
+  return s:remove_dummy_prefix(l:output)
 endfunction "}}}
 
 function! ghcmod#type(line, col, path, module) "{{{
@@ -178,6 +177,8 @@ function! ghcmod#expand(path) "{{{
   let l:qflist = []
   let l:cmd = ghcmod#build_command(['expand', "-b '\n'", a:path])
   for l:line in split(ghcmod#system(l:cmd), '\n')
+    let l:line = s:remove_dummy_prefix(l:line)
+
     " path:line:col1-col2: message
     " or path:line:col: message
     let l:m = matchlist(l:line, '^\s*\(\(\f\| \)\+\):\(\d\+\):\(\d\+\)\%(-\(\d\+\)\)\?\%(:\s*\(.*\)\)\?$')
@@ -217,6 +218,10 @@ function! ghcmod#expand(path) "{{{
     call s:fix_qf_lnum_col(l:qf)
   endfor
   return l:qflist
+endfunction "}}}
+
+function! s:remove_dummy_prefix(str) "{{{
+  return substitute(a:str, '^Dummy:0:0:Error:', '', '')
 endfunction "}}}
 
 function! ghcmod#add_autogen_dir(path, cmd) "{{{
@@ -292,22 +297,16 @@ endfunction "}}}
 function! s:find_basedir() "{{{
   " search Cabal file
   if !exists('b:ghcmod_basedir')
-    let l:ghcmod_basedir = expand('%:p:h')
-    let l:dir = l:ghcmod_basedir
-    for _ in range(6)
-      if !empty(glob(l:dir . '/*.cabal', 0))
-        let l:ghcmod_basedir = l:dir
-        break
-      endif
-      let l:dir = fnamemodify(l:dir, ':h')
-    endfor
-    let b:ghcmod_basedir = l:ghcmod_basedir
+    " `ghc-mod root` is available since v4.0.0.
+    lcd `=expand('%:p:h')`
+    let b:ghcmod_basedir = substitute(vimproc#system(['ghc-mod', 'root']), '\n*$', '', '')
+    lcd -
   endif
   return b:ghcmod_basedir
 endfunction "}}}
 
 function! ghcmod#version() "{{{
-  return [1, 3, 0]
+  return [1, 3, 1]
 endfunction "}}}
 
 " vim: set ts=2 sw=2 et fdm=marker:
